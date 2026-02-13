@@ -1,0 +1,92 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Todo List</title>
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+    <div class="container">
+        <header class="topbar">
+            <div class="brand">Robo.Matics</div>
+            <div class="topbar-actions">
+                <button id="logoutBtn" class="auth-btn" style="display:none;">Log Out</button>
+            </div>
+            <div class="topbar-status" id="authStatus"></div>
+        </header>
+
+        <section class="hero">
+            <h1 class="hero-title">A simple to do list</h1>
+            <p class="hero-subtitle">Всё в одном месте: задачи, планы и порядок — без лишнего.</p>
+        </section>
+
+        <div class="todo-app">
+            <div class="todo-section" data-category="habit">
+                <div class="section-title">HABIT TRACKER</div>
+                <div class="input-section">
+                    <input type="text" class="taskInput" placeholder="Добавьте новую задачу..." autocomplete="off">
+                    <button class="add-btn addBtn">Добавить</button>
+                </div>
+                <div class="stats">
+                    <span>Всего: <strong class="totalCount">0</strong></span>
+                    <span>Выполнено: <strong class="completedCount">0</strong></span>
+                </div>
+                <div class="filter-buttons">
+                    <button class="filter-btn active" data-filter="all">Все</button>
+                    <button class="filter-btn" data-filter="active">Активные</button>
+                    <button class="filter-btn" data-filter="completed">Выполненные</button>
+                </div>
+                <ul class="task-list taskList"></ul>
+                <div class="actions">
+                    <button class="clear-btn clearCompleted">Очистить выполненные</button>
+                </div>
+            </div>
+
+            <div class="todo-section" data-category="calendars">
+                <div class="section-title">CALENDARS</div>
+                <div class="input-section">
+                    <input type="text" class="taskInput" placeholder="Добавьте новую задачу..." autocomplete="off">
+                    <button class="add-btn addBtn">Добавить</button>
+                </div>
+                <div class="stats">
+                    <span>Всего: <strong class="totalCount">0</strong></span>
+                    <span>Выполнено: <strong class="completedCount">0</strong></span>
+                </div>
+                <div class="filter-buttons">
+                    <button class="filter-btn active" data-filter="all">Все</button>
+                    <button class="filter-btn" data-filter="active">Активные</button>
+                    <button class="filter-btn" data-filter="completed">Выполненные</button>
+                </div>
+                <ul class="task-list taskList"></ul>
+                <div class="actions">
+                    <button class="clear-btn clearCompleted">Очистить выполненные</button>
+                </div>
+            </div>
+
+            <div class="todo-section" data-category="projects">
+                <div class="section-title">PROJECTS</div>
+                <div class="input-section">
+                    <input type="text" class="taskInput" placeholder="Добавьте новую задачу..." autocomplete="off">
+                    <button class="add-btn addBtn">Добавить</button>
+                </div>
+                <div class="stats">
+                    <span>Всего: <strong class="totalCount">0</strong></span>
+                    <span>Выполнено: <strong class="completedCount">0</strong></span>
+                </div>
+                <div class="filter-buttons">
+                    <button class="filter-btn active" data-filter="all">Все</button>
+                    <button class="filter-btn" data-filter="active">Активные</button>
+                    <button class="filter-btn" data-filter="completed">Выполненные</button>
+                </div>
+                <ul class="task-list taskList"></ul>
+                <div class="actions">
+                    <button class="clear-btn clearCompleted">Очистить выполненные</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="script.js"></script>
+</body>
+</html>

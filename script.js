@@ -5,48 +5,65 @@ class TodoApp {
         this.token = localStorage.getItem('authToken') || '';
         this.user = null;
 
-        this.tasks = [];
-        this.currentFilter = 'all';
-        
-        this.usernameInput = document.getElementById('usernameInput');
-        this.passwordInput = document.getElementById('passwordInput');
-        this.registerBtn = document.getElementById('registerBtn');
-        this.loginBtn = document.getElementById('loginBtn');
+        this.sections = [];
+
         this.logoutBtn = document.getElementById('logoutBtn');
         this.authStatusEl = document.getElementById('authStatus');
 
-        this.taskInput = document.getElementById('taskInput');
-        this.addBtn = document.getElementById('addBtn');
-        this.taskList = document.getElementById('taskList');
-        this.clearCompletedBtn = document.getElementById('clearCompleted');
-        this.filterButtons = document.querySelectorAll('.filter-btn');
-        this.totalCountEl = document.getElementById('totalCount');
-        this.completedCountEl = document.getElementById('completedCount');
+        this.sectionEls = Array.from(document.querySelectorAll('.todo-section'));
+        this.sections = this.sectionEls.map(el => this.createSection(el));
         
         this.attachEventListeners();
         this.refreshAuthState();
     }
     
     attachEventListeners() {
-        this.registerBtn.addEventListener('click', () => this.register());
-        this.loginBtn.addEventListener('click', () => this.login());
-        this.logoutBtn.addEventListener('click', () => this.logout());
+        if (this.logoutBtn) {
+            this.logoutBtn.addEventListener('click', () => this.logout());
+        }
 
-        this.addBtn.addEventListener('click', () => this.addTask());
-        this.taskInput.addEventListener('keypress', (e) => {
-            if (e.key === 'Enter') this.addTask();
-        });
-        
-        this.filterButtons.forEach(btn => {
-            btn.addEventListener('click', (e) => {
-                this.filterButtons.forEach(b => b.classList.remove('active'));
-                e.target.classList.add('active');
-                this.currentFilter = e.target.dataset.filter;
-                this.render();
+        this.sections.forEach(section => {
+            section.addBtn.addEventListener('click', () => this.addTask(section));
+            section.taskInput.addEventListener('keypress', (e) => {
+                if (e.key === 'Enter') this.addTask(section);
             });
+
+            section.filterButtons.forEach(btn => {
+                btn.addEventListener('click', (e) => {
+                    section.filterButtons.forEach(b => b.classList.remove('active'));
+                    e.target.classList.add('active');
+                    section.currentFilter = e.target.dataset.filter;
+                    this.renderSection(section);
+                });
+            });
+
+            section.clearCompletedBtn.addEventListener('click', () => this.clearCompleted(section));
         });
-        
-        this.clearCompletedBtn.addEventListener('click', () => this.clearCompleted());
+    }
+
+    createSection(el) {
+        const category = el.dataset.category;
+        const taskInput = el.querySelector('.taskInput');
+        const addBtn = el.querySelector('.addBtn');
+        const taskList = el.querySelector('.taskList');
+        const clearCompletedBtn = el.querySelector('.clearCompleted');
+        const filterButtons = Array.from(el.querySelectorAll('.filter-btn'));
+        const totalCountEl = el.querySelector('.totalCount');
+        const completedCountEl = el.querySelector('.completedCount');
+
+        return {
+            el,
+            category,
+            tasks: [],
+            currentFilter: 'all',
+            taskInput,
+            addBtn,
+            taskList,
+            clearCompletedBtn,
+            filterButtons,
+            totalCountEl,
+            completedCountEl
+        };
     }
 
     async apiRequest(path, options = {}) {
@@ -82,103 +99,55 @@ class TodoApp {
 
     setTodoEnabled(enabled) {
         const isEnabled = Boolean(enabled);
-        this.taskInput.disabled = !isEnabled;
-        this.addBtn.disabled = !isEnabled;
-        this.clearCompletedBtn.disabled = !isEnabled;
 
-        this.filterButtons.forEach(btn => {
-            btn.disabled = !isEnabled;
-            btn.style.opacity = isEnabled ? '1' : '0.6';
+        this.sections.forEach(section => {
+            section.taskInput.disabled = !isEnabled;
+            section.addBtn.disabled = !isEnabled;
+            section.clearCompletedBtn.disabled = !isEnabled;
+
+            section.filterButtons.forEach(btn => {
+                btn.disabled = !isEnabled;
+                btn.style.opacity = isEnabled ? '1' : '0.6';
+            });
+
+            section.taskInput.placeholder = isEnabled
+                ? 'Добавьте новую задачу...'
+                : 'Войдите, чтобы добавлять задачи';
         });
-
-        this.taskInput.placeholder = isEnabled
-            ? 'Добавьте новую задачу...'
-            : 'Войдите, чтобы добавлять задачи';
     }
 
     setAuthUiState() {
         const loggedIn = Boolean(this.user);
-        this.registerBtn.style.display = loggedIn ? 'none' : 'inline-block';
-        this.loginBtn.style.display = loggedIn ? 'none' : 'inline-block';
-        this.logoutBtn.style.display = loggedIn ? 'inline-block' : 'none';
-
-        this.usernameInput.disabled = loggedIn;
-        this.passwordInput.disabled = loggedIn;
+        if (this.logoutBtn) {
+            this.logoutBtn.style.display = loggedIn ? 'inline-block' : 'none';
+        }
 
         if (loggedIn) {
             this.setAuthStatus(`Вы вошли как: ${this.user.username}`);
+        } else {
+            this.setAuthStatus('');
         }
     }
 
     async refreshAuthState() {
         if (!this.token) {
-            this.user = null;
-            this.tasks = [];
-            this.setTodoEnabled(false);
-            this.setAuthUiState();
-            this.render();
+            window.location.href = '/login.html';
             return;
         }
 
         try {
             const data = await this.apiRequest('/api/me', { method: 'GET' });
             this.user = data.user;
-            this.tasks = this.loadFromStorage();
+            this.sections.forEach(section => {
+                section.tasks = this.loadFromStorage(section.category);
+            });
             this.setTodoEnabled(true);
             this.setAuthUiState();
-            this.render();
+            this.sections.forEach(section => this.renderSection(section));
         } catch {
             this.token = '';
             localStorage.removeItem('authToken');
-            this.user = null;
-            this.tasks = [];
-            this.setTodoEnabled(false);
-            this.setAuthUiState();
-            this.render();
-        }
-    }
-
-    async register() {
-        try {
-            const username = this.usernameInput.value.trim();
-            const password = this.passwordInput.value;
-
-            const data = await this.apiRequest('/api/register', {
-                method: 'POST',
-                body: JSON.stringify({ username, password })
-            });
-
-            this.token = data.token;
-            localStorage.setItem('authToken', this.token);
-            this.user = data.user;
-            this.tasks = this.loadFromStorage();
-            this.setTodoEnabled(true);
-            this.setAuthUiState();
-            this.render();
-        } catch (e) {
-            this.setAuthStatus(`Ошибка: ${e.message}`);
-        }
-    }
-
-    async login() {
-        try {
-            const username = this.usernameInput.value.trim();
-            const password = this.passwordInput.value;
-
-            const data = await this.apiRequest('/api/login', {
-                method: 'POST',
-                body: JSON.stringify({ username, password })
-            });
-
-            this.token = data.token;
-            localStorage.setItem('authToken', this.token);
-            this.user = data.user;
-            this.tasks = this.loadFromStorage();
-            this.setTodoEnabled(true);
-            this.setAuthUiState();
-            this.render();
-        } catch (e) {
-            this.setAuthStatus(`Ошибка: ${e.message}`);
+            window.location.href = '/login.html';
         }
     }
 
@@ -186,19 +155,16 @@ class TodoApp {
         this.token = '';
         localStorage.removeItem('authToken');
         this.user = null;
-        this.tasks = [];
-        this.setTodoEnabled(false);
-        this.setAuthUiState();
-        this.render();
+        window.location.href = '/';
     }
-    
-    addTask() {
+
+    addTask(section) {
         if (!this.user) {
             this.setAuthStatus('Сначала выполните вход');
             return;
         }
 
-        const text = this.taskInput.value.trim();
+        const text = section.taskInput.value.trim();
         
         if (!text) {
             alert('Пожалуйста, введите текст задачи');
@@ -211,71 +177,71 @@ class TodoApp {
             completed: false,
             createdAt: new Date().toISOString()
         };
-        
-        this.tasks.push(task);
-        this.taskInput.value = '';
-        this.taskInput.focus();
-        this.saveToStorage();
-        this.render();
+
+        section.tasks.push(task);
+        section.taskInput.value = '';
+        section.taskInput.focus();
+        this.saveToStorage(section.category, section.tasks);
+        this.renderSection(section);
     }
-    
-    deleteTask(id) {
+
+    deleteTask(section, id) {
         if (!this.user) return;
-        this.tasks = this.tasks.filter(task => task.id !== id);
-        this.saveToStorage();
-        this.render();
+        section.tasks = section.tasks.filter(task => task.id !== id);
+        this.saveToStorage(section.category, section.tasks);
+        this.renderSection(section);
     }
-    
-    toggleTask(id) {
+
+    toggleTask(section, id) {
         if (!this.user) return;
-        const task = this.tasks.find(t => t.id === id);
+        const task = section.tasks.find(t => t.id === id);
         if (task) {
             task.completed = !task.completed;
-            this.saveToStorage();
-            this.render();
+            this.saveToStorage(section.category, section.tasks);
+            this.renderSection(section);
         }
     }
-    
-    clearCompleted() {
+
+    clearCompleted(section) {
         if (!this.user) return;
-        const hasCompleted = this.tasks.some(t => t.completed);
+        const hasCompleted = section.tasks.some(t => t.completed);
         if (!hasCompleted) {
             alert('Нет выполненных задач для удаления');
             return;
         }
         
         if (confirm('Вы уверены, что хотите удалить все выполненные задачи?')) {
-            this.tasks = this.tasks.filter(task => !task.completed);
-            this.saveToStorage();
-            this.render();
+            section.tasks = section.tasks.filter(task => !task.completed);
+            this.saveToStorage(section.category, section.tasks);
+            this.renderSection(section);
         }
     }
-    
-    getFilteredTasks() {
-        switch (this.currentFilter) {
+
+    getFilteredTasks(section) {
+        switch (section.currentFilter) {
             case 'active':
-                return this.tasks.filter(t => !t.completed);
+                return section.tasks.filter(t => !t.completed);
             case 'completed':
-                return this.tasks.filter(t => t.completed);
+                return section.tasks.filter(t => t.completed);
             default:
-                return this.tasks;
+                return section.tasks;
         }
     }
-    
-    updateStats() {
-        const total = this.tasks.length;
-        const completed = this.tasks.filter(t => t.completed).length;
-        
-        this.totalCountEl.textContent = total;
-        this.completedCountEl.textContent = completed;
+
+    updateStats(section) {
+        const total = section.tasks.length;
+        const completed = section.tasks.filter(t => t.completed).length;
+
+        section.totalCountEl.textContent = total;
+        section.completedCountEl.textContent = completed;
     }
-    
-    render() {
-        const filteredTasks = this.getFilteredTasks();
-        this.taskList.innerHTML = '';
-        
+
+    renderSection(section) {
+        const filteredTasks = this.getFilteredTasks(section);
+        section.taskList.innerHTML = '';
+
         if (filteredTasks.length === 0) {
-            this.taskList.innerHTML = '<div class="empty-state">Нет задач</div>';
+            section.taskList.innerHTML = '<div class="empty-state">Нет задач</div>';
         } else {
             filteredTasks.forEach(task => {
                 const li = document.createElement('li');
@@ -293,25 +259,25 @@ class TodoApp {
                 
                 const checkbox = li.querySelector('.task-checkbox');
                 const deleteBtn = li.querySelector('.delete-btn');
-                
-                checkbox.addEventListener('change', () => this.toggleTask(task.id));
-                deleteBtn.addEventListener('click', () => this.deleteTask(task.id));
-                
-                this.taskList.appendChild(li);
+
+                checkbox.addEventListener('change', () => this.toggleTask(section, task.id));
+                deleteBtn.addEventListener('click', () => this.deleteTask(section, task.id));
+
+                section.taskList.appendChild(li);
             });
         }
-        
-        this.updateStats();
+
+        this.updateStats(section);
     }
-    
-    saveToStorage() {
+
+    saveToStorage(category, tasks) {
         if (!this.user) return;
-        localStorage.setItem(`todoTasks:${this.user.username}`, JSON.stringify(this.tasks));
+        localStorage.setItem(`todoTasks:${this.user.username}:${category}`, JSON.stringify(tasks));
     }
-    
-    loadFromStorage() {
+
+    loadFromStorage(category) {
         if (!this.user) return [];
-        const stored = localStorage.getItem(`todoTasks:${this.user.username}`);
+        const stored = localStorage.getItem(`todoTasks:${this.user.username}:${category}`);
         return stored ? JSON.parse(stored) : [];
     }
     
